@@ -124,7 +124,7 @@ MSc Computer Networks & Security
 
 ## 🏷️ Tags
 
-`Cisco` `Juniper` `MPLS` `IPSec` `BGP` `OSPF` `VRF` `GRE` `EVE-NG` `vSRX` `Network Security` `Infrastructure-as-Code` `TechNation`
+ `MPLS` `IPSec` `BGP` `OSPF` `VRF` `GRE` `EVE-NG` `vSRX` `Network Security` `Infrastructure-as-Code` 
 
 ---
 
