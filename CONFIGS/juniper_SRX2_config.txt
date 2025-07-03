@@ -1,0 +1,303 @@
+root@NGFW# show
+## Last changed: 2024-05-02 04:30:54 UTC
+version 10.0R1.8;
+system {
+    host-name NGFW;
+    root-authentication {
+        encrypted-password "$1$SJ80NQzu$ReKAL1vSOx1vHSUUilNON."; ## SECRET-DATA
+    }
+    name-server {
+        208.67.222.222;
+        208.67.220.220;
+    }
+    services {
+        ssh;
+        telnet;
+        web-management {
+            http {
+                interface vlan.0;
+            }
+            https {
+                system-generated-certificate;
+                interface vlan.0;
+            }
+        }
+        dhcp {
+            router {
+                192.168.1.1;
+            }
+            pool 192.168.1.0/24 {
+                address-range low 192.168.1.2 high 192.168.1.254;
+            }
+            propagate-settings ge-0/0/0.0;
+        }
+    }
+    syslog {
+        archive size 100k files 3;
+        user * {
+            any emergency;
+        }
+        file messages {
+            any critical;
+            authorization info;
+        }
+        file interactive-commands {
+            interactive-commands error;
+        }
+    }
+    max-configurations-on-flash 5;
+    max-configuration-rollbacks 5;
+    license {
+        autoupdate {
+            url https://ae1.juniper.net/junos/key_retrieval;
+        }
+    }
+}
+interfaces {
+    interface-range interfaces-trust {
+        member fe-0/0/2;
+        member fe-0/0/3;
+        member fe-0/0/4;
+        member fe-0/0/5;
+        member fe-0/0/6;
+        member fe-0/0/7;
+        unit 0 {
+            family ethernet-switching {
+                vlan {
+                    members vlan-trust;
+                }
+            }
+        }
+    }
+    ge-0/0/0 {
+        mtu 1600;
+        unit 0 {
+            family inet {
+                address 172.31.0.5/30;
+            }
+        }
+    }
+    ge-0/0/1 {
+        mtu 1600;
+        unit 0 {
+            family inet {
+                address 10.11.11.2/30;
+            }
+        }
+    }
+    st0 {
+        unit 1 {
+            family inet {
+                mtu 1600;
+                address 10.0.0.2/30;
+            }
+        }
+    }
+    vlan {
+        mtu 9192;
+        unit 0 {
+            family inet {
+                address 192.168.10.1/24;
+            }
+        }
+    }
+}
+routing-options {
+    static {
+        route 192.168.2.0/24 next-hop st0.1;
+        route 192.168.1.0/24 next-hop 172.31.0.6;
+        route 172.32.0.0/30 next-hop 172.31.0.6;
+    }
+}
+security {
+    ike {
+        proposal IKE-PROP {
+            authentication-method pre-shared-keys;
+            dh-group group5;
+            authentication-algorithm sha1;
+            encryption-algorithm aes-128-cbc;
+            lifetime-seconds 3600;
+        }
+        policy IKE-POL {
+            mode main;
+            proposals IKE-PROP;
+            pre-shared-key ascii-text "$9$QoUm3n9AtOIhrmftO1IrlGDi"; ## SECRET-DATA
+        }
+        gateway IKE-GW {
+            ike-policy IKE-POL;
+            address 10.11.11.1;
+            external-interface ge-0/0/1;
+        }
+    }
+    ipsec {
+        proposal IPSEC-PROP {
+            protocol esp;
+            authentication-algorithm hmac-sha1-96;
+            encryption-algorithm aes-128-cbc;
+            lifetime-seconds 3600;
+        }
+        policy IPSEC-POL {
+            perfect-forward-secrecy {
+                keys group5;
+            }
+            proposals IPSEC-PROP;
+        }
+        vpn IPSEC-VPN {
+            bind-interface st0.1;
+            ike {
+                gateway IKE-GW;
+                ipsec-policy IPSEC-POL;
+            }
+            establish-tunnels immediately;
+        }
+    }
+    nat {
+        source {
+            rule-set trust-to-untrust {
+                from zone trust;
+                to zone untrust;
+                rule source-nat-rule {
+                    match {
+                        source-address 0.0.0.0/0;
+                    }
+                    then {
+                        source-nat {
+                            interface;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    screen {
+        ids-option untrust-screen {
+            icmp {
+                ping-death;
+            }
+            ip {
+                source-route-option;
+                tear-drop;
+            }
+            tcp {
+                syn-flood {
+                    alarm-threshold 1024;
+                    attack-threshold 200;
+                    source-threshold 1024;
+                    destination-threshold 2048;
+                    timeout 20;
+                }
+                land;
+            }
+        }
+    }
+    zones {
+        security-zone trust {
+            host-inbound-traffic {
+                system-services {
+                    all;
+                }
+                protocols {
+                    all;
+                }
+            }
+            interfaces {
+                vlan.0;
+            }
+        }
+        security-zone untrust {
+            screen untrust-screen;
+        }
+        security-zone Inside {
+            address-book {
+                address BARCLAY_HQ_LAN 192.168.1.0/24;
+                address BARCLAY_HQ_WAN 172.32.0.0/30;
+                address-set BARCLAY-HQ {
+                    address BARCLAY_HQ_LAN;
+                    address BARCLAY_HQ_WAN;
+                }
+            }
+            interfaces {
+                ge-0/0/0.0 {
+                    host-inbound-traffic {
+                        system-services {
+                            all;
+                        }
+                    }
+                }
+            }
+        }
+        security-zone Outside {
+            interfaces {
+                ge-0/0/1.0 {
+                    host-inbound-traffic {
+                        system-services {
+                            all;
+                        }
+                    }
+                }
+            }
+        }
+        security-zone VPN {
+            address-book {
+                address BARCLAY_US_LAN 192.168.2.0/24;
+                address-set BARCLAY-US {
+                    address BARCLAY_US_LAN;
+                }
+            }
+            host-inbound-traffic {
+                system-services {
+                    all;
+                }
+            }
+            interfaces {
+                st0.1;
+            }
+        }
+    }
+    policies {
+        from-zone trust to-zone untrust {
+            policy trust-to-untrust {
+                match {
+                    source-address any;
+                    destination-address any;
+                    application any;
+                }
+                then {
+                    permit;
+                }
+            }
+        }
+        from-zone Inside to-zone VPN {
+            policy Inside-to-VPN {
+                match {
+                    source-address BARCLAY-HQ;
+                    destination-address BARCLAY-US;
+                    application any;
+                }
+                then {
+                    permit;
+                }
+            }
+        }
+        from-zone VPN to-zone Inside {
+            policy VPN-to-Inside {
+                match {
+                    source-address BARCLAY-US;
+                    destination-address BARCLAY-HQ;
+                    application any;
+                }
+                then {
+                    permit;
+                }
+            }
+        }
+    }
+}
+vlans {
+    vlan-trust {
+        vlan-id 3;
+        l3-interface vlan.0;
+    }
+}
+
+[edit]
