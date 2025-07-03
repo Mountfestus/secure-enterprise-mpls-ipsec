@@ -1,0 +1,115 @@
+PE1#sh run
+Building configuration...
+
+Current configuration : 1816 bytes
+!
+version 12.2
+service timestamps debug datetime msec
+service timestamps log datetime msec
+!
+hostname PE1
+!
+boot-start-marker
+boot-end-marker
+!
+security passwords min-length 1
+!
+no aaa new-model
+ip source-route
+ip vrf BARCLAY
+ rd 65500:1
+ route-target export 65500:1
+ route-target import 65500:1
+!
+ip cef
+!
+!
+no ip domain lookup
+no ipv6 cef
+!
+!
+multilink bundle-name authenticated
+!
+!
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+ ip ospf 1 area 0
+!
+interface GigabitEthernet0/0
+ description CONNECTION TO P ROUTER
+ mtu 9216
+ ip address 10.0.0.1 255.255.255.252
+ ip ospf 1 area 0
+ media-type rj45
+ speed auto
+ duplex auto
+ negotiation auto
+ mpls ip
+!
+interface GigabitEthernet0/1
+ description CONNECTION TO NGFW
+ mtu 9216
+ ip vrf forwarding BARCLAY
+ ip address 172.31.0.6 255.255.255.252
+ media-type rj45
+ speed auto
+ duplex auto
+ negotiation auto
+!
+interface GigabitEthernet0/2
+ description CONNECTION TO NGFW
+ no ip address
+ media-type rj45
+ speed auto
+ duplex auto
+ negotiation auto
+!
+interface GigabitEthernet0/2.50
+!
+interface POS1/0
+ no ip address
+ shutdown
+!
+router ospf 1
+ router-id 1.1.1.1
+ log-adjacency-changes
+!
+router bgp 65500
+ no synchronization
+ bgp log-neighbor-changes
+ neighbor 3.3.3.3 remote-as 65500
+ neighbor 3.3.3.3 update-source Loopback0
+ no auto-summary
+ !
+ address-family vpnv4
+  neighbor 3.3.3.3 activate
+  neighbor 3.3.3.3 send-community extended
+ exit-address-family
+ !
+ address-family ipv4 vrf BARCLAY
+  no synchronization
+  redistribute connected
+  redistribute static
+ exit-address-family
+!
+!
+!
+no ip http server
+no ip http secure-server
+ip route vrf BARCLAY 192.168.2.0 255.255.255.0 172.31.0.5 name NGFW
+!
+!
+control-plane
+!
+!
+line con 0
+ password Barclay
+ logging synchronous
+ login
+ stopbits 1
+line aux 0
+ stopbits 1
+line vty 0 4
+ login
+!
+end

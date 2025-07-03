@@ -1,0 +1,90 @@
+P#sh run
+Building configuration...
+
+Current configuration : 1196 bytes
+!
+version 15.2
+service timestamps debug datetime msec
+service timestamps log datetime msec
+!
+hostname P
+!
+boot-start-marker
+boot-end-marker
+!
+!
+!
+no aaa new-model
+!
+!
+no ip domain lookup
+ip cef
+no ipv6 cef
+!
+!
+multilink bundle-name authenticated
+!
+!
+interface Loopback0
+ ip address 2.2.2.2 255.255.255.255
+ ip ospf 1 area 0
+!
+interface GigabitEthernet0/0
+ description CONNECTION TO PE1 ROUTER
+ mtu 9216
+ ip address 10.0.0.2 255.255.255.252
+ ip ospf 1 area 0
+ media-type rj45
+ speed auto
+ duplex auto
+ negotiation auto
+ mpls ip
+!
+interface GigabitEthernet0/1
+ description CONNECTION TO PE3
+ mtu 9216
+ ip address 10.0.0.5 255.255.255.252
+ ip ospf 1 area 0
+ media-type rj45
+ speed auto
+ duplex auto
+ negotiation auto
+ mpls ip
+!
+interface GigabitEthernet0/2
+ no ip address
+ media-type rj45
+ speed auto
+ duplex auto
+ negotiation auto
+!
+interface FastEthernet1/0
+ no ip address
+ shutdown
+ duplex full
+!
+router ospf 1
+ router-id 2.2.2.2
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+!
+!
+control-plane
+!
+!
+line con 0
+ password Barclay
+ logging synchronous
+ login
+ stopbits 1
+line aux 0
+ stopbits 1
+line vty 0 4
+ login
+!
+!
+end
